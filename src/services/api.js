@@ -1,6 +1,6 @@
 ﻿import axios from 'axios';
 
-const API_BASE_URL = 'http://192.168.226.20:8081/api';
+const API_BASE_URL = 'http://localhost:8082/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -22,10 +22,12 @@ api.interceptors.response.use(
 );
 
 // CRUD operations for each entity
+// ================= CUSTOMERS =================
 export const getCustomers = () => api.get('/customers');
 export const createCustomer = (data) => api.post('/customers', data);
-export const updateCustomer = (id, data) => api.put(`/customers/${id}`, data);
-export const deleteCustomer = (id) => api.delete(`/customers/${id}`);
+export const updateCustomer = (id, data) => api.patch(`/customers/${id}`, data);
+export const deleteCustomer = (id) => api.patch(`/customers/${id}/eliminar`);
+export const restoreCustomer = (id) => api.patch(`/customers/${id}/restaurar`);
 
 export const getProducts = (params = {}) => {
   const queryParams = new URLSearchParams();
@@ -50,9 +52,16 @@ export const createReservation = (data) => api.post('/reservations', data);
 export const updateReservation = (id, data) => api.put(`/reservations/${id}`, data);
 export const deleteReservation = (id) => api.delete(`/reservations/${id}`);
 
+// ================= ORDERS =================
 export const getOrders = () => api.get('/orders');
 export const createOrder = (data) => api.post('/orders', data);
 export const updateOrder = (id, data) => api.put(`/orders/${id}`, data);
-export const deleteOrder = (id) => api.delete(`/orders/${id}`);
+export const deleteOrder = (id) => api.patch(`/orders/${id}/eliminar`);
+
+// ================= ORDER DETAILS =================
+export const getOrderDetails = () => api.get('/order-details');
+export const createOrderDetail = (data) => api.post('/order-details', data);
+export const updateOrderDetail = (id, data) => api.put(`/order-details/${id}`, data);
+export const deleteOrderDetail = (id) => api.patch(`/order-details/${id}/eliminar`);
 
 export default api;

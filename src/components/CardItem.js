@@ -7,6 +7,7 @@ export const CardItem = ({
   title,
   subtitle,
   data,
+  status,
   onPress,
   onEdit,
   onDelete,
@@ -16,8 +17,12 @@ export const CardItem = ({
 }) => {
   return (
     <View style={[styles.container, { opacity }]}>
-      <View style={styles.leftBorder} />
-      
+      <View
+        style={[
+          styles.leftBorder,
+          { backgroundColor: status ? '#10b981' : '#ef4444' }
+        ]}
+      />
       <TouchableOpacity style={styles.content} onPress={onPress} activeOpacity={0.75}>
         <View style={styles.header}>
           <Text style={styles.title} numberOfLines={2}>

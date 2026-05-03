@@ -1,205 +1,193 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import {
-  View,
-  FlatList,
-  StyleSheet,
-  RefreshControl,
-  Text,
-  Alert,
+  View, FlatList, StyleSheet, RefreshControl, Text,
+  Alert, TouchableOpacity, TextInput, Animated,
 } from 'react-native';
-import { COLORS } from '../constants/colors';
-import { SearchBar } from '../components/SearchBar';
-import { CardItem } from '../components/CardItem';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { Loader } from '../components/Loader';
 import { ErrorMessage } from '../components/ErrorMessage';
 import { FormModal } from '../components/FormModal';
-import { FloatingActionButton } from '../components/FloatingActionButton';
+import { ConfirmModal } from '../components/ConfirmModal';
 import { useFetch } from '../hooks/useFetch';
-import {
-  getOrders,
-  createOrder,
-  updateOrder,
-  deleteOrder,
-} from '../services/api';
+import { getOrders, createOrder, updateOrder, deleteOrder } from '../services/api';
 
-export const OrdersScreen = ({ navigation }) => {
-  const { data, loading, error, refetch } = useFetch(getOrders);
+const BG = '#080d1a';
+const CARD = '#0f1729';
+const BORDER = '#1a2640';
+const CYAN = '#00d4d4';
+const PINK = '#ec4899';
+const GREEN = '#10b981';
+const RED = '#ef4444';
+const GOLD = '#fbbf24';
+
+export const OrdersScreen = () => {
   const [search, setSearch] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
 
-  const filteredData = data.filter(item => {
-    const searchLower = search.toLowerCase();
-    return (
-      item.id?.toString().includes(search) ||
-      (item.customer_name && item.customer_name.toLowerCase().includes(searchLower)) ||
-      (item.status && item.status.toLowerCase().includes(searchLower))
-    );
-  });
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [confirmData, setConfirmData] = useState({ title: '', message: '', onConfirm: () => {}, type: 'danger' });
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await refetch();
-    setRefreshing(false);
-  };
+  const { data = [], loading, error, refetch } = useFetch(getOrders);
+  const headerO = useRef(new Animated.Value(0)).current;
 
-  const handleCreate = () => {
-    setEditingOrder(null);
-    setModalVisible(true);
-  };
+  useEffect(() => {
+    Animated.timing(headerO, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+  }, []);
 
-  const handleEdit = (order) => {
-    setEditingOrder(order);
-    setModalVisible(true);
-  };
+  const filteredData = data.filter(item => 
+    item.order_id?.toLowerCase().includes(search.toLowerCase()) ||
+    item.customer_id?.toString().includes(search)
+  );
 
   const handleDelete = (order) => {
-    Alert.alert(
-      'Eliminar Orden',
-      `¿Estás seguro de que quieres eliminar la orden #${order.id}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteOrder(order.id);
-              refetch();
-            } catch (error) {
-              Alert.alert('Error', 'No se pudo eliminar la orden');
-            }
-          },
-        },
-      ]
-    );
+    setConfirmData({
+      title: 'Anular Orden',
+      message: `¿Estás seguro de eliminar la orden ${order.order_id}?`,
+      type: 'danger',
+      onConfirm: async () => {
+        try {
+          await deleteOrder(order.id);
+          await refetch();
+          setConfirmVisible(false);
+        } catch (err) { 
+          Alert.alert('Error', 'No se pudo anular la orden'); 
+        }
+      },
+    });
+    setConfirmVisible(true);
   };
 
   const handleSave = async (formData) => {
     try {
-      if (editingOrder) {
-        await updateOrder(editingOrder.id, formData);
-      } else {
-        await createOrder(formData);
-      }
+      if (editingOrder) await updateOrder(editingOrder.id, formData);
+      else await createOrder(formData);
+      setModalVisible(false);
       refetch();
-    } catch (error) {
-      throw error;
+    } catch (err) { 
+      Alert.alert('Error', 'No se pudo procesar la solicitud'); 
     }
   };
 
-  const orderFields = [
-    { key: 'customer_name', label: 'Nombre del Cliente', required: true },
-    { key: 'status', label: 'Estado', required: true, placeholder: 'Ej: pending, preparing, ready, completed' },
-    { key: 'total_price', label: 'Precio Total', required: true, keyboardType: 'decimal-pad' },
-  ];
-
   if (loading && !refreshing) return <Loader />;
-
-  if (error && !data.length) {
-    return <ErrorMessage message={error} onRetry={refetch} />;
-  }
-
-  const renderItem = ({ item }) => {
-    const totalPrice = item.total_price || item.total || '0.00';
-    const status = item.status || 'Pendiente';
-
-    return (
-      <CardItem
-        title={`Orden #${item.id}`}
-        subtitle={`Total: $${totalPrice}`}
-        data={[
-          `Estado: ${status}`,
-          `Items: ${item.items?.length || item.order_items?.length || '0'}`,
-          `Cliente: ${item.customer_name || 'N/A'}`,
-        ]}
-        showActions={true}
-        onEdit={() => handleEdit(item)}
-        onDelete={() => handleDelete(item)}
-      />
-    );
-  };
+  if (error) return <ErrorMessage message="Error al cargar órdenes" onRetry={refetch} />;
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Órdenes</Text>
-        <Text style={styles.headerSubtitle}>{filteredData.length} resultados</Text>
-      </View>
+      {/* HEADER NEÓN */}
+      <Animated.View style={[styles.header, { opacity: headerO }]}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.greetText}>Registro de Ventas</Text>
+            <Text style={styles.brandText}>Órdenes</Text>
+          </View>
+          <TouchableOpacity style={styles.addBtn} onPress={() => { setEditingOrder(null); setModalVisible(true); }}>
+            <View style={styles.iconCircle}>
+              <Icon name="add" size={28} color="#000" />
+            </View>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.searchContainer}>
+          <Icon name="search" size={20} color="#475569" style={{ marginRight: 10 }} />
+          <TextInput 
+            style={styles.searchInput} 
+            placeholder="Buscar por código..." 
+            placeholderTextColor="#475569" 
+            value={search} 
+            onChangeText={setSearch} 
+          />
+        </View>
+      </Animated.View>
 
-      <SearchBar
-        placeholder="Buscar órdenes..."
-        value={search}
-        onChangeText={setSearch}
+      {/* LISTADO DE ÓRDENES */}
+      <FlatList
+        data={filteredData}
+        keyExtractor={(item) => item.id.toString()}
+        contentContainerStyle={{ padding: 16, paddingBottom: 100 }}
+        renderItem={({ item }) => {
+          const statusColor = item.is_active ? GREEN : RED;
+          return (
+            <View style={[styles.card, { borderLeftColor: statusColor }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.orderId}>ORDEN: {item.order_id}</Text>
+                <Text style={styles.orderTotal}>S/ {item.total_amount}</Text>
+                <Text style={styles.orderSub}>Cliente ID: {item.customer_id} • {item.order_date}</Text>
+                <Text style={[styles.statusText, { color: statusColor }]}>
+                  ESTADO: {item.is_active ? 'ACTIVO' : 'ANULADO'}
+                </Text>
+              </View>
+              
+              <View style={styles.actions}>
+                <TouchableOpacity onPress={() => { setEditingOrder(item); setModalVisible(true); }}>
+                  <Icon name="edit" size={24} color={CYAN} />
+                </TouchableOpacity>
+
+                {item.is_active && (
+                  <TouchableOpacity onPress={() => handleDelete(item)}>
+                    <Icon name="delete" size={24} color={RED} /> 
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          );
+        }}
+        refreshControl={
+          <RefreshControl 
+            refreshing={refreshing} 
+            onRefresh={async () => { setRefreshing(true); await refetch(); setRefreshing(false); }} 
+            tintColor={CYAN} 
+          />
+        }
       />
 
-      {filteredData.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No hay órdenes disponibles</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredData}
-          renderItem={renderItem}
-          keyExtractor={item => item.id?.toString() || Math.random().toString()}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor={COLORS.primary}
-            />
-          }
-          contentContainerStyle={styles.listContainer}
-          scrollEnabled={true}
-        />
-      )}
+      <ConfirmModal 
+        visible={confirmVisible} 
+        onClose={() => setConfirmVisible(false)} 
+        onConfirm={confirmData.onConfirm} 
+        title={confirmData.title} 
+        message={confirmData.message} 
+        type={confirmData.type} 
+      />
 
-      <FloatingActionButton onPress={handleCreate} />
-
-      <FormModal
-        visible={modalVisible}
-        onClose={() => setModalVisible(false)}
-        onSave={handleSave}
-        title={editingOrder ? 'Editar Orden' : 'Nueva Orden'}
-        fields={orderFields}
-        initialData={editingOrder || {}}
-        isEditing={!!editingOrder}
+      <FormModal 
+        visible={modalVisible} 
+        onClose={() => setModalVisible(false)} 
+        onSave={handleSave} 
+        title={editingOrder ? 'Editar Orden' : 'Nueva Orden'} 
+        fields={[
+          { key: 'order_id', label: 'Código de Orden', required: true }, 
+          { key: 'customer_id', label: 'ID del Cliente', required: true }, 
+          { key: 'total_amount', label: 'Monto Total', keyboardType: 'decimal-pad' }
+        ]} 
+        initialData={editingOrder || {}} 
       />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
+  container: { flex: 1, backgroundColor: BG },
+  header: { 
+    margin: 16, padding: 20, backgroundColor: CARD, 
+    borderRadius: 24, borderWidth: 1, borderColor: BORDER 
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
+  brandText: { fontSize: 26, fontWeight: '900', color: '#fff' },
+  greetText: { fontSize: 12, color: '#475569' },
+  iconCircle: { backgroundColor: PINK, padding: 10, borderRadius: 12 },
+  searchContainer: { 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: BG, 
+    borderRadius: 12, paddingHorizontal: 10 
   },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+  searchInput: { flex: 1, color: '#fff', height: 40 },
+  card: { 
+    backgroundColor: CARD, marginBottom: 12, padding: 16, 
+    borderRadius: 16, flexDirection: 'row', borderLeftWidth: 6 
   },
-  headerSubtitle: {
-    fontSize: 14,
-    color: COLORS.textSecondary,
-    marginTop: 6,
-  },
-  listContainer: {
-    paddingVertical: 12,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  emptyText: {
-    color: COLORS.textSecondary,
-    fontSize: 16,
-  },
+  orderId: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
+  orderTotal: { color: GOLD, fontSize: 20, fontWeight: '900', marginVertical: 4 },
+  orderSub: { color: '#64748b', fontSize: 12 },
+  statusText: { fontSize: 11, fontWeight: '900', marginTop: 8, letterSpacing: 0.5 },
+  actions: { justifyContent: 'center', alignItems: 'center', paddingLeft: 10, gap: 20 },
 });

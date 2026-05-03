@@ -12,6 +12,7 @@ import { ProductsScreen } from '../screens/ProductsScreen';
 import { TablesScreen } from '../screens/TablesScreen';
 import { ReservationsScreen } from '../screens/ReservationsScreen';
 import { OrdersScreen } from '../screens/OrdersScreen';
+import { OrderDetailScreen } from '../screens/OrderDetailScreen';
 
 // ── Palette (igual que DashboardScreen) ──────────────────────
 const BG = '#080d1a';
@@ -33,6 +34,7 @@ const MENU = [
   { name: 'Mesas', label: 'Mesas', icon: 'table-restaurant', color: GREEN },
   { name: 'Reservas', label: 'Reservas', icon: 'event-note', color: CYAN },
   { name: 'Órdenes', label: 'Órdenes', icon: 'receipt', color: PINK },
+  { name: 'Detalles', label: 'Detalles', icon: 'list_alt', color: PURPLE },
 ];
 
 // ── Animated menu item ────────────────────────────────────────
@@ -194,6 +196,10 @@ export const DrawerNavigator = () => (
     <Drawer.Screen name="Órdenes" component={OrdersScreen} options={{
       title: 'Órdenes',
       drawerIcon: ({ color, size }) => <Icon name="receipt" color={color} size={size} />
+    }} />
+    <Drawer.Screen name="Detalles" component={OrderDetailScreen} options={{
+      title: 'Detalles',
+      drawerIcon: ({ color, size }) => <Icon name="list_alt" color={color} size={size} />
     }} />
   </Drawer.Navigator>
 );
